@@ -9,7 +9,7 @@ Panel nativo y widget de escritorio para ver cuotas de suscripciones de IA en do
 | Codex | `codex app-server`, `account/rateLimits/read` | Porcentajes de las ventanas y próximos reinicios |
 | Codex, actividad | `account/usage/read` | Tokens históricos de la cuenta; **no** representan saldo ni límite del plan |
 | Claude | OAuth de Claude Code, endpoint de uso | Sesión y semana, más cuotas por modelo si las devuelve Claude |
-| ChatGPT | Sin fuente independiente verificada | Acceso a ChatGPT y estado explícito sin medición; no se copian los números de Codex |
+| ChatGPT | Sesión propia en la página de uso | Conexión disponible; la página verificada excluye los chats normales de su contador. No se duplican los números de Codex |
 | Gemini app | Sesión WebKit propia, consulta de la página de uso | Ventanas de cinco horas y semanal; lectura real y sincronización verificadas |
 
 No hay llamadas de inferencia, compras, cambios de plan, ni reinicios de cuota automáticos.
@@ -31,6 +31,14 @@ macOS decide el momento efectivo de actualización del widget; la app pide una n
 El recolector consulta los proveedores cada tres minutos.
 
 En la Mac servidor con Ventura se instala la misma app universal, sin la extensión de escritorio (requiere macOS 14).
+En Ventura el panel usa AppKit para evitar un fallo reproducido en SwiftUI sobre la Mac Intel.
+El LaunchAgent supervisa el proceso real de la app y lo reinicia tras un fallo; **Salir** la cierra voluntariamente.
+La tarjeta queda detrás de las ventanas normales y puede verse al mostrar el escritorio.
+
+**Conectar ChatGPT** abre la página de uso de la cuenta familiar en una sesión propia de WebKit.
+La página de esta cuenta indica que los chats normales no están incluidos en su contador: los límites publicados
+son compartidos por Codex, Work, Workspace Agents y ChatGPT para Excel. Por eso se muestra el estado de conexión
+y la limitación; no se inventa un porcentaje de consumo del chat familiar.
 
 Para Gemini: **Conectar Gemini**, iniciar sesión en la ventana y pulsar **Leer consumo**.
 La sesión queda en el almacén WebKit de la app en esa Mac, no en el servidor.

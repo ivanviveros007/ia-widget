@@ -16,7 +16,7 @@ HOME = Path.home()
 STATE = HOME / 'Library/Application Support/QuotaGarden'
 
 
-def launch_agent(name, arguments, keep_alive=False):
+def launch_agent(name, arguments, keep_alive=False, restart_on_failure=False):
     folder = HOME / 'Library/LaunchAgents'
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / (name + '.plist')
@@ -25,6 +25,7 @@ def launch_agent(name, arguments, keep_alive=False):
                 StandardErrorPath=str(STATE / (name + '.err.log')),
                 EnvironmentVariables={'PATH': '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/' + HOME.name + '/.local/bin'})
     if keep_alive: spec.update(KeepAlive=True, ThrottleInterval=15)
+    elif restart_on_failure: spec.update(KeepAlive={'SuccessfulExit': False}, ThrottleInterval=15)
     path.write_bytes(plistlib.dumps(spec))
     domain = 'gui/' + str(os.getuid())
     subprocess.run(['launchctl', 'bootout', domain, str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -52,6 +53,9 @@ def main():
         with (destination / 'Contents/Info.plist').open('rb') as f: old = plistlib.load(f)
         if old.get('CFBundleIdentifier') != 'dev.bambam.QuotaGarden':
             raise SystemExit('Ya existe otra aplicación con este nombre; no se reemplazó.')
+        app_agent = HOME / 'Library/LaunchAgents/dev.bambam.QuotaGarden.app.plist'
+        subprocess.run(['launchctl', 'bootout', 'gui/' + str(os.getuid()), str(app_agent)],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         subprocess.run(['pkill', '-x', 'Cuota IA'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         backup = STATE / ('app-backup-' + datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
         shutil.move(str(destination), str(backup))
@@ -75,7 +79,7 @@ def main():
     arguments = ['/usr/bin/python3', str(runtime / 'quota_service.py')]
     if args.receiver: arguments.append('--receiver')
     launch_agent('dev.bambam.QuotaGarden.service', arguments, keep_alive=True)
-    launch_agent('dev.bambam.QuotaGarden.app', ['/usr/bin/open', str(destination)])
+    launch_agent('dev.bambam.QuotaGarden.app', [str(destination / 'Contents/MacOS/Cuota IA')], restart_on_failure=True)
     print('Instalado:', destination)
     print('Servicio:', 'receptor SSH' if args.receiver else 'recolector local')
 

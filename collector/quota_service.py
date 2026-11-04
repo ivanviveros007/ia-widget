@@ -280,14 +280,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
         expected = (STATE / 'control.key').read_text().strip()
         if not secrets.compare_digest(self.headers.get('Authorization', ''), 'Bearer ' + expected):
             return self.respond(401, {'error': 'unauthorized'})
-        if self.path != '/v1/gemini': return self.respond(404, {'error': 'not_found'})
+        if self.path not in ('/v1/gemini', '/v1/chatgpt/capability'): return self.respond(404, {'error': 'not_found'})
         try:
             length = int(self.headers.get('Content-Length', '0'))
             if not 0 < length <= 262144: raise ValueError('size')
-            item = gemini_from_web(json.loads(self.rfile.read(length)))
+            body = json.loads(self.rfile.read(length))
+            if self.path == '/v1/chatgpt/capability':
+                if not isinstance(body, dict) or body.get('chatMessagesExcluded') is not True: raise ValueError('capability')
+                item = unavailable('chatgpt', 'Cuenta conectada. La página de uso excluye los chats normales; su contador corresponde a Codex y Work.')
+            else:
+                item = gemini_from_web(body)
             with LOCK:
                 snapshot = read_snapshot()
-                snapshot['providers'] = [item if p['id'] == 'gemini' else p for p in snapshot['providers']]
+                snapshot['providers'] = [item if p['id'] == item['id'] else p for p in snapshot['providers']]
                 snapshot['generatedAt'] = now()
                 atomic_json(STATE / 'snapshot.json', validate_snapshot(snapshot))
             self.respond(200, {'ok': True})

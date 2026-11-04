@@ -2,6 +2,8 @@ import AppKit
 import SwiftUI
 import WidgetKit
 
+@_silgen_name("QuotaInstallCrashDiagnostics") private func installCrashDiagnostics()
+
 @MainActor final class UsageStore: ObservableObject {
     @Published var snapshot = UsageSnapshot.empty
     @Published var error: String?
@@ -16,7 +18,8 @@ import WidgetKit
                 await refresh()
                 if iteration % 3 == 0 && !RuntimeRole.isReceiver { GeminiBrowser.poll() }
                 iteration += 1
-                try? await Task.sleep(nanoseconds: 60_000_000_000)
+                let seconds: UInt64 = snapshot.providers.isEmpty ? 3 : 60
+                try? await Task.sleep(nanoseconds: seconds * 1_000_000_000)
             }
         }
     }
@@ -32,7 +35,10 @@ import WidgetKit
     }
 }
 
-@main struct QuotaGardenApp: App {
+struct QuotaGardenApp: App {
+    init() {
+        if ProcessInfo.processInfo.environment["QUOTA_DIAGNOSTICS"] == "1" { installCrashDiagnostics() }
+    }
     @NSApplicationDelegateAdaptor(AppLifecycle.self) private var lifecycle
     @StateObject private var store = UsageStore()
     var body: some Scene {
@@ -54,6 +60,9 @@ import WidgetKit
         Window("Conectar Gemini", id: "gemini") {
             GeminiConnection().frame(minWidth: 800, minHeight: 650)
         }
+        Window("Conectar ChatGPT", id: "chatgpt") {
+            ChatGPTConnection().frame(minWidth: 850, minHeight: 650)
+        }
         MenuBarExtra("Cuota IA", systemImage: "chart.bar.xaxis") {
             MenuContents(store: store)
         }
@@ -61,13 +70,14 @@ import WidgetKit
 }
 
 final class AppLifecycle: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     func applicationShouldSaveSecureApplicationState(_ app: NSApplication) -> Bool { false }
     func applicationShouldRestoreSecureApplicationState(_ app: NSApplication) -> Bool { false }
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Secondary SwiftUI Window scenes can also open on Ventura. Start with the summary only.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            for window in NSApp.windows where ["dashboard", "gemini"].contains(window.identifier?.rawValue ?? "") {
-                window.close()
+            for window in NSApp.windows where ["dashboard", "gemini", "chatgpt"].contains(window.identifier?.rawValue ?? "") {
+                window.orderOut(nil)
             }
         }
     }
@@ -87,6 +97,7 @@ struct MenuContents: View {
         Divider()
         Button("Actualizar") { Task { await store.refresh() } }
         if !RuntimeRole.isReceiver {
+            Button("Conectar ChatGPT…") { openWindow(id: "chatgpt"); NSApp.activate(ignoringOtherApps: true) }
             Button("Conectar Gemini…") { openWindow(id: "gemini"); NSApp.activate(ignoringOtherApps: true) }
         }
         Divider()
@@ -134,10 +145,11 @@ struct Dashboard: View {
                     }
                     ForEach(store.snapshot.providers) { provider in
                         ProviderCard(provider: provider) {
-                            if RuntimeRole.isReceiver && (provider.id == "gemini" || provider.id == "claude") {
+                            if RuntimeRole.isReceiver && ["gemini", "claude", "chatgpt"].contains(provider.id) {
                                 connectionNotice = "Conectá esta cuenta desde Cuota IA en la Mac principal."
                             }
                             else if provider.id == "gemini" { openWindow(id: "gemini") }
+                            else if provider.id == "chatgpt" { openWindow(id: "chatgpt") }
                             else if provider.id == "claude", provider.status != "ok" { connectClaude() }
                             else { openProvider(provider.id) }
                         }
@@ -234,12 +246,15 @@ struct CompactWindowAppearance: NSViewRepresentable {
             guard let window = view.window else { return }
             window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = true
-            window.styleMask = [.borderless]
+            if window.styleMask.contains(.titled) { window.styleMask = [.borderless] }
             window.isOpaque = false
             window.backgroundColor = .clear
             window.isMovableByWindowBackground = true
             window.hasShadow = true
-            window.setContentSize(NSSize(width: 300, height: 112))
+            let size = window.contentView?.frame.size ?? .zero
+            if abs(size.width - 300) > 1 || abs(size.height - 112) > 1 {
+                window.setContentSize(NSSize(width: 300, height: 112))
+            }
             window.level = NSWindow.Level(rawValue: NSWindow.Level.normal.rawValue - 1)
             window.collectionBehavior = [.stationary, .ignoresCycle]
             for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
@@ -275,6 +290,7 @@ struct ProviderCard: View {
             if provider.windows.isEmpty {
                 Text(provider.message).font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 if provider.id == "gemini" { Button("Conectar Gemini", action: connect).controlSize(.small) }
+                if provider.id == "chatgpt" { Button("Conectar ChatGPT", action: connect).controlSize(.small) }
             } else {
                 ForEach(provider.windows) { quota in
                     VStack(spacing: 6) {
