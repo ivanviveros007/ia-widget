@@ -55,6 +55,9 @@ struct QuotaWidgetView: View {
                                     Text("\(weekly.label): \(Int(weekly.remaining)) % disponible").font(.system(size: 10)).foregroundStyle(.secondary)
                                     ResetLabel(window: weekly).font(.system(size: 9)).foregroundStyle(.secondary)
                                 }
+                            } else if !provider.allowanceList.isEmpty {
+                                Text("Conectado").font(.system(size: 12, weight: .semibold))
+                                Text("Ver cupos de herramientas").font(.system(size: 9)).foregroundStyle(.secondary)
                             } else {
                                 Text(provider.id == "chatgpt" ? "Sin contador verificado" : "Pendiente de conexión")
                                     .font(.system(size: 10)).foregroundStyle(.secondary)

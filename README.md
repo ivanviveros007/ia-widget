@@ -9,7 +9,7 @@ Panel nativo y widget de escritorio para ver cuotas de suscripciones de IA en do
 | Codex | `codex app-server`, `account/rateLimits/read` | Porcentajes de las ventanas y próximos reinicios |
 | Codex, actividad | `account/usage/read` | Tokens históricos de la cuenta; **no** representan saldo ni límite del plan |
 | Claude | OAuth de Claude Code, endpoint de uso | Sesión y semana, más cuotas por modelo si las devuelve Claude |
-| ChatGPT | Sesión propia en la página de uso | Conexión disponible; la página verificada excluye los chats normales de su contador. No se duplican los números de Codex |
+| ChatGPT | Sesión propia y respuesta de inicio del chat normal | Cupos reales de investigaciones, archivos, texto a archivo e imágenes, con reinicios. No hay contador de preguntas normales |
 | Gemini app | Sesión WebKit propia, consulta de la página de uso | Ventanas de cinco horas y semanal; lectura real y sincronización verificadas |
 
 No hay llamadas de inferencia, compras, cambios de plan, ni reinicios de cuota automáticos.
@@ -39,6 +39,11 @@ La tarjeta queda detrás de las ventanas normales y puede verse al mostrar el es
 La página de esta cuenta indica que los chats normales no están incluidos en su contador: los límites publicados
 son compartidos por Codex, Work, Workspace Agents y ChatGPT para Excel. Por eso se muestra el estado de conexión
 y la limitación; no se inventa un porcentaje de consumo del chat familiar.
+Se verificó una segunda fuente en la respuesta que solicita el chat normal al abrirse:
+`limits_progress` devuelve cupos de herramientas y sus reinicios. Se muestran con su unidad real,
+sin convertirlos en tokens ni en cantidad de preguntas restantes. El resumen muestra **Activa**
+para la sesión de ChatGPT y el detalle muestra cada herramienta. La sesión se consulta cada tres minutos
+mientras Cuota IA está abierta; no se recarga una conversación ni un borrador de consulta.
 
 Para Gemini: **Conectar Gemini**, iniciar sesión en la ventana y pulsar **Leer consumo**.
 La sesión queda en el almacén WebKit de la app en esa Mac, no en el servidor.

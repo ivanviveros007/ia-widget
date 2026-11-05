@@ -11,6 +11,14 @@ struct QuotaWindow: Codable, Identifiable {
     var resetDate: Date? { resetsAt.map(Date.init(timeIntervalSince1970:)) }
 }
 
+struct QuotaAllowance: Codable, Identifiable {
+    let label: String
+    let remaining: Int
+    let resetsAt: Double?
+    var id: String { label }
+    var resetDate: Date? { resetsAt.map(Date.init(timeIntervalSince1970:)) }
+}
+
 struct ProviderUsage: Codable, Identifiable {
     let id: String
     let name: String
@@ -20,7 +28,9 @@ struct ProviderUsage: Codable, Identifiable {
     let updatedAt: Double
     let plan: String?
     let lifetimeTokens: Int?
-    var outdated: Bool { !windows.isEmpty && (status == "stale" || Date().timeIntervalSince1970 - updatedAt > 600) }
+    let allowances: [QuotaAllowance]?
+    var allowanceList: [QuotaAllowance] { allowances ?? [] }
+    var outdated: Bool { (!windows.isEmpty || !allowanceList.isEmpty) && (status == "stale" || Date().timeIntervalSince1970 - updatedAt > 600) }
     var tint: Color {
         switch id { case "codex": return .mint; case "claude": return .orange
         case "gemini": return .cyan; default: return .white }

@@ -121,6 +121,11 @@ import SwiftUI
                 label?.stringValue = "\(Int(quota.remaining)) %"
                 label?.textColor = provider.outdated ? .systemOrange : quota.remaining <= 10 ? .systemRed : .labelColor
                 label?.toolTip = provider.outdated ? "Lectura anterior; falta actualizar" : "Disponible en \(quota.label)"
+            } else if !provider.allowanceList.isEmpty {
+                label?.stringValue = provider.outdated ? "Anterior" : "Activa"
+                label?.font = .systemFont(ofSize: 12, weight: .medium)
+                label?.textColor = provider.outdated ? .systemOrange : .labelColor
+                label?.toolTip = "Cuenta conectada · ver cupos de herramientas"
             } else { label?.stringValue = "—"; label?.textColor = .tertiaryLabelColor }
         }
         for view in detailStack.arrangedSubviews { detailStack.removeArrangedSubview(view); view.removeFromSuperview() }
@@ -129,7 +134,7 @@ import SwiftUI
             let card = NSStackView()
             card.orientation = .vertical; card.alignment = .leading; card.spacing = 8
             card.addArrangedSubview(text(provider.name + (provider.plan.map { " · " + $0.capitalized } ?? ""), size: 16, weight: .semibold))
-            if provider.windows.isEmpty { card.addArrangedSubview(text(provider.message, size: 11, color: .secondaryLabelColor)) }
+            if provider.windows.isEmpty && provider.allowanceList.isEmpty { card.addArrangedSubview(text(provider.message, size: 11, color: .secondaryLabelColor)) }
             for quota in provider.windows {
                 let color: NSColor = quota.remaining <= 10 ? .systemRed : quota.remaining <= 25 ? .systemOrange : .systemMint
                 card.addArrangedSubview(text("\(quota.label) · \(Int(quota.remaining)) % disponible", size: 12, color: color))
@@ -145,6 +150,15 @@ import SwiftUI
                     card.addArrangedSubview(text(seconds > 0 ? "Se restablece en \(hours) h \(minutes) min · \(formatter.string(from: date))" : "Esperando una nueva medición", size: 10, color: .secondaryLabelColor))
                 }
             }
+            for quota in provider.allowanceList {
+                card.addArrangedSubview(text("\(quota.label) · \(quota.remaining) restantes", size: 12, color: quota.remaining == 0 ? .systemRed : .systemMint))
+                if let date = quota.resetDate {
+                    let formatter = DateFormatter(); formatter.locale = Locale(identifier: "es_AR")
+                    formatter.dateStyle = .medium; formatter.timeStyle = .short
+                    card.addArrangedSubview(text("Reinicio: " + formatter.string(from: date), size: 10, color: .secondaryLabelColor))
+                }
+            }
+            if !provider.allowanceList.isEmpty { card.addArrangedSubview(text(provider.message, size: 10, color: .secondaryLabelColor)) }
             if provider.outdated { card.addArrangedSubview(text("Lectura anterior · " + provider.message, size: 10, color: .systemOrange)) }
             detailStack.addArrangedSubview(card)
             card.widthAnchor.constraint(equalTo: detailStack.widthAnchor).isActive = true

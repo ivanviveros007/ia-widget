@@ -12,11 +12,11 @@ import WidgetKit
     func start() {
         guard polling == nil else { return }
         polling = Task {
-            if !RuntimeRole.isReceiver { GeminiBrowser.prepare() }
+            if !RuntimeRole.isReceiver { GeminiBrowser.prepare(); ChatGPTBrowser.prepare() }
             var iteration = 0
             while !Task.isCancelled {
                 await refresh()
-                if iteration % 3 == 0 && !RuntimeRole.isReceiver { GeminiBrowser.poll() }
+                if iteration % 3 == 0 && !RuntimeRole.isReceiver { GeminiBrowser.poll(); ChatGPTBrowser.poll() }
                 iteration += 1
                 let seconds: UInt64 = snapshot.providers.isEmpty ? 3 : 60
                 try? await Task.sleep(nanoseconds: seconds * 1_000_000_000)
@@ -92,6 +92,8 @@ struct MenuContents: View {
         ForEach(store.snapshot.providers) { provider in
             if let quota = provider.windows.first {
                 Text("\(provider.name): \(Int(quota.remaining)) % disponible\(provider.outdated ? " · anterior" : "")")
+            } else if !provider.allowanceList.isEmpty {
+                Text("ChatGPT: conectado · cupos de herramientas disponibles")
             } else { Text("\(provider.name): sin medición") }
         }
         Divider()
@@ -222,6 +224,9 @@ struct CompactQuota: View {
                                     Text("%").font(.system(size: 9))
                                     if provider?.outdated == true { Image(systemName: "clock").font(.system(size: 8)) }
                                 }.foregroundStyle(provider?.outdated == true ? Color.orange : quota.remaining <= 10 ? .red : .white.opacity(0.85))
+                            } else if provider?.allowanceList.isEmpty == false {
+                                Text(provider?.outdated == true ? "Anterior" : "Activa")
+                                    .font(.system(size: 12, weight: .medium)).foregroundStyle(provider?.outdated == true ? Color.orange : .white.opacity(0.85))
                             } else {
                                 Text("—").font(.system(size: 18, weight: .medium)).foregroundStyle(.tertiary)
                             }
@@ -281,13 +286,13 @@ struct ProviderCard: View {
                     Text("SIN ACTUALIZAR").font(.system(size: 9, weight: .bold)).foregroundStyle(.orange)
                 } else if provider.windows.contains(where: { $0.remaining == 0 }) {
                     Text("LÍMITE ALCANZADO").font(.system(size: 9, weight: .bold)).foregroundStyle(.red)
-                } else if !provider.windows.isEmpty {
+                } else if !provider.windows.isEmpty || !provider.allowanceList.isEmpty {
                     Text("CONECTADO").font(.system(size: 9, weight: .bold)).foregroundStyle(.mint)
                 }
                 Button(action: connect) { Image(systemName: "arrow.up.right") }.buttonStyle(.plain)
                     .help(provider.id == "gemini" ? "Conectar o actualizar Gemini" : "Abrir servicio")
             }
-            if provider.windows.isEmpty {
+            if provider.windows.isEmpty && provider.allowanceList.isEmpty {
                 Text(provider.message).font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 if provider.id == "gemini" { Button("Conectar Gemini", action: connect).controlSize(.small) }
                 if provider.id == "chatgpt" { Button("Conectar ChatGPT", action: connect).controlSize(.small) }
@@ -315,6 +320,21 @@ struct ProviderCard: View {
                         }.font(.system(size: 10)).foregroundStyle(.secondary)
                     }
                 }
+                if !provider.allowanceList.isEmpty {
+                    Text("CUPOS DE HERRAMIENTAS").font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary)
+                }
+                ForEach(provider.allowanceList) { quota in
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(quota.label).foregroundStyle(.secondary)
+                            Spacer()
+                            Text("\(quota.remaining) restantes").monospacedDigit().foregroundStyle(quota.remaining == 0 ? Color.red : .mint)
+                        }.font(.system(size: 12))
+                        ResetLabel(window: QuotaWindow(label: quota.label, usedPercent: 0, resetsAt: quota.resetsAt))
+                            .font(.system(size: 10)).foregroundStyle(.secondary)
+                    }
+                }
+                if !provider.allowanceList.isEmpty { Text(provider.message).font(.caption2).foregroundStyle(.secondary) }
                 if provider.outdated { Text(provider.message).font(.caption2).foregroundStyle(.orange) }
                 if let tokens = provider.lifetimeTokens {
                     Text("\(tokens.formatted()) tokens históricos · actividad de cuenta")

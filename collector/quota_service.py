@@ -208,8 +208,28 @@ def validate_snapshot(data):
         entry['updatedAt'] = timestamp
         tokens = raw.get('lifetimeTokens')
         if isinstance(tokens, int) and not isinstance(tokens, bool) and tokens >= 0: entry['lifetimeTokens'] = tokens
+        if key == 'chatgpt' and isinstance(raw.get('allowances'), list):
+            entry['allowances'] = normalize_chat_allowances(raw['allowances'])
         output.append(entry)
     return dict(schemaVersion=1, generatedAt=generated, providers=output)
+
+
+def normalize_chat_allowances(raw):
+    result = []
+    seen = set()
+    for item in raw[:20]:
+        if not isinstance(item, dict): continue
+        label = item.get('label')
+        remaining = item.get('remaining')
+        if not isinstance(label, str) or not label.strip() or label in seen: continue
+        if isinstance(remaining, bool) or not isinstance(remaining, (int, float)) or not math.isfinite(remaining) or remaining < 0 or int(remaining) != remaining: continue
+        reset = window('reset', 0, item.get('resetsAt'))['resetsAt']
+        seen.add(label)
+        display = {'deep_research': 'Investigaciones', 'file_upload': 'Cargas de archivos',
+                   'paste_text_to_file': 'Texto a archivo', 'image_gen': 'Generación de imágenes'}.get(label, label[:80])
+        result.append(dict(label=display, remaining=int(remaining), resetsAt=reset))
+    result.sort(key=lambda item: 0 if 'gpt' in item['label'].lower() else 1)
+    return result
 
 
 def initial_snapshot():
@@ -280,13 +300,21 @@ class Handler(http.server.BaseHTTPRequestHandler):
         expected = (STATE / 'control.key').read_text().strip()
         if not secrets.compare_digest(self.headers.get('Authorization', ''), 'Bearer ' + expected):
             return self.respond(401, {'error': 'unauthorized'})
-        if self.path not in ('/v1/gemini', '/v1/chatgpt/capability'): return self.respond(404, {'error': 'not_found'})
+        if self.path not in ('/v1/gemini', '/v1/chatgpt/capability', '/v1/chatgpt/allowances'): return self.respond(404, {'error': 'not_found'})
         try:
             length = int(self.headers.get('Content-Length', '0'))
             if not 0 < length <= 262144: raise ValueError('size')
             body = json.loads(self.rfile.read(length))
-            if self.path == '/v1/chatgpt/capability':
+            if self.path == '/v1/chatgpt/allowances':
+                if not isinstance(body, dict) or not isinstance(body.get('allowances'), list): raise ValueError('allowances')
+                values = normalize_chat_allowances(body['allowances'])
+                if not values: raise ValueError('empty')
+                item = provider('chatgpt', message='Cuenta conectada. Estos son cupos de herramientas. ChatGPT no informa aquí cuántas consultas normales quedan; los chats normales están excluidos de la cuota de Codex/Work.', allowances=values)
+            elif self.path == '/v1/chatgpt/capability':
                 if not isinstance(body, dict) or body.get('chatMessagesExcluded') is not True: raise ValueError('capability')
+                with LOCK:
+                    current = next(p for p in read_snapshot()['providers'] if p['id'] == 'chatgpt')
+                    if current.get('allowances'): return self.respond(200, {'ok': True})
                 item = unavailable('chatgpt', 'Cuenta conectada. La página de uso excluye los chats normales; su contador corresponde a Codex y Work.')
             else:
                 item = gemini_from_web(body)

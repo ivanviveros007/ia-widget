@@ -46,6 +46,23 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(result['windows'][0]['usedPercent'], 50)
         self.assertIsNotNone(result['windows'][0]['resetsAt'])
 
+    def test_chat_counters_preserve_units_and_real_zero(self):
+        raw = [{'label': 'GPT chat', 'remaining': 0, 'resetsAt': '2026-11-05T03:00:00Z'},
+               {'label': 'Missing', 'remaining': None}, {'label': 'Invalid', 'remaining': True}]
+        result = q.normalize_chat_allowances(raw)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['remaining'], 0)
+        self.assertNotIn('usedPercent', result[0])
+        self.assertIsNotNone(result[0]['resetsAt'])
+
+    def test_chat_export_keeps_counts_and_strips_extra_fields(self):
+        snapshot = q.initial_snapshot()
+        entry = snapshot['providers'][1]
+        entry['allowances'] = [{'label': 'GPT chat', 'remaining': 80, 'cookie': 'never-export'}]
+        exported = q.validate_snapshot(snapshot)['providers'][1]
+        self.assertEqual(exported['allowances'][0]['remaining'], 80)
+        self.assertNotIn('never-export', str(exported))
+
     def test_failed_collection_preserves_last_measurement_age(self):
         with tempfile.TemporaryDirectory() as temp, patch.object(q, 'STATE', Path(temp)):
             snapshot = q.initial_snapshot()
