@@ -56,6 +56,9 @@ la integración queda pendiente; no se extraen cookies de otros navegadores para
 Claude usa una caché propia en el Llavero. Las consultas automáticas leen exclusivamente esa caché,
 con la interacción de Keychain desactivada globalmente para el proceso, además de `LAContext`.
 La credencial original `Claude Code-credentials` solo se consulta mediante la acción explícita `--connect`.
+La reconexión recrea únicamente la caché propia para renovar los permisos del lector tras una actualización,
+prueba su lectura desde otro proceso no interactivo y solicita una actualización inmediata del consumo.
+No anuncia éxito por el mero hecho de guardar: confirma la respuesta del proveedor en el panel.
 Si la sesión vence o la caché no es accesible, el panel conserva la medición anterior como desactualizada. Abrir Claude Code
 y usar la flecha de Claude en el panel permite reconectar con una acción explícita.
 No se rotan tokens de Claude por cuenta propia ni se modifica su entrada original del Llavero.

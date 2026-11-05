@@ -113,6 +113,7 @@ struct Dashboard: View {
     @State private var floating = false
     @Environment(\.dismiss) private var dismiss
     @State private var connectionNotice: String?
+    @State private var connectingClaude = false
     var body: some View {
         VStack(spacing: 0) {
             HStack(alignment: .top) {
@@ -178,6 +179,9 @@ struct Dashboard: View {
         if let link = links[id], let url = URL(string: link) { NSWorkspace.shared.open(url) }
     }
     private func connectClaude() {
+        guard !connectingClaude else { return }
+        connectingClaude = true
+        connectionNotice = "Autorizá la conexión de Claude en el Llavero."
         let path = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/QuotaGarden/runtime/collector/keychain-reader")
         let process = Process()
         process.executableURL = path
@@ -186,10 +190,34 @@ struct Dashboard: View {
         process.standardError = FileHandle.nullDevice
         process.terminationHandler = { result in
             DispatchQueue.main.async {
-                connectionNotice = result.terminationStatus == 0 ? "Claude conectado. Los datos se actualizarán en hasta 3 minutos." : "No se pudo conectar. Iniciá sesión en Claude Code y volvé a intentar."
+                guard result.terminationStatus == 0 else {
+                    connectingClaude = false
+                    connectionNotice = "No se pudo verificar el acceso silencioso a Claude. La lectura anterior sigue sin actualizar."
+                    return
+                }
+                connectionNotice = "Acceso verificado. Actualizando el consumo de Claude…"
+                let refresh = Process()
+                refresh.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+                let script = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/QuotaGarden/runtime/collector/quota_service.py")
+                refresh.arguments = [script.path, "--once"]
+                refresh.standardOutput = FileHandle.nullDevice
+                refresh.standardError = FileHandle.nullDevice
+                refresh.terminationHandler = { _ in
+                    Task { @MainActor in
+                        await store.refresh()
+                        connectingClaude = false
+                        if let claude = store.snapshot.providers.first(where: { $0.id == "claude" }) {
+                            connectionNotice = claude.status == "ok" ? "Claude actualizado correctamente." : claude.message
+                        } else { connectionNotice = "No se pudo confirmar la actualización de Claude." }
+                    }
+                }
+                do { try refresh.run() } catch {
+                    connectingClaude = false
+                    connectionNotice = "Acceso verificado. No se pudo iniciar la actualización del consumo."
+                }
             }
         }
-        do { try process.run() } catch { connectionNotice = "No se encontró el lector del Llavero." }
+        do { try process.run() } catch { connectingClaude = false; connectionNotice = "No se encontró el lector del Llavero." }
     }
 }
 
