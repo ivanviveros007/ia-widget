@@ -23,6 +23,9 @@ en la primera ventana de cada servicio; un guion indica que no hay medición. Se
 cabecera y al pulsar los porcentajes abre el panel completo. En la barra de menú están **Mostrar resumen**
 y **Mostrar panel**. El botón de contraer del panel vuelve al resumen.
 El resumen queda detrás de las ventanas normales para no tapar el trabajo; se ve al mostrar el escritorio.
+La tarjeta muestra el día y la hora del reinicio de sesión. El detalle muestra fecha exacta y cuenta regresiva
+para cada ventana y herramienta, en horario de Argentina. Son reinicios de cupos, no fechas de cobro ni
+renovación de la suscripción; no se deducen a partir del día de pago.
 El alfiler permite mantener la ventana sobre las otras aplicaciones.
 
 En la Mac principal: clic derecho en el escritorio → **Editar widgets** → buscar **Cuota IA**.

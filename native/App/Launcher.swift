@@ -21,6 +21,7 @@ import SwiftUI
     private var detail: NSWindow!
     private var statusItem: NSStatusItem!
     private var labels: [String: NSTextField] = [:]
+    private var resetLabels: [String: NSTextField] = [:]
     private var snapshot = UsageSnapshot.empty
     private var timer: Timer?
     private var detailStack: NSStackView!
@@ -77,6 +78,9 @@ import SwiftUI
             let value = text("—", size: 20, weight: .medium)
             value.alignment = .center; value.frame = NSRect(x: x, y: 20, width: 70, height: 29)
             material.addSubview(name); material.addSubview(value); labels[pair.0] = value
+            let reset = text("", size: 8, color: .secondaryLabelColor)
+            reset.alignment = .center; reset.frame = NSRect(x: x, y: 5, width: 70, height: 13)
+            material.addSubview(reset); resetLabels[pair.0] = reset
         }
         compact.contentView = material
     }
@@ -118,10 +122,12 @@ import SwiftUI
         for provider in snapshot.providers {
             let label = labels[provider.id]
             if let quota = provider.windows.first {
+                resetLabels[provider.id]?.stringValue = quota.resetDate.map(QuotaDates.compact) ?? "Sin fecha"
                 label?.stringValue = "\(Int(quota.remaining)) %"
                 label?.textColor = provider.outdated ? .systemOrange : quota.remaining <= 10 ? .systemRed : .labelColor
                 label?.toolTip = provider.outdated ? "Lectura anterior; falta actualizar" : "Disponible en \(quota.label)"
             } else if !provider.allowanceList.isEmpty {
+                resetLabels[provider.id]?.stringValue = "Ver reinicios"
                 label?.stringValue = provider.outdated ? "Anterior" : "Activa"
                 label?.font = .systemFont(ofSize: 12, weight: .medium)
                 label?.textColor = provider.outdated ? .systemOrange : .labelColor

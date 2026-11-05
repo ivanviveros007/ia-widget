@@ -74,3 +74,14 @@ struct ResetLabel: View {
         } else { Text("Reinicio no informado") }
     }
 }
+
+enum QuotaDates {
+    static func exact(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "es_AR")
+        formatter.timeZone = TimeZone(identifier: "America/Argentina/Buenos_Aires")
+        formatter.dateFormat = "dd/MM · HH:mm"
+        return formatter.string(from: date)
+    }
+    static func compact(_ date: Date) -> String { exact(date).replacingOccurrences(of: " · ", with: " ") }
+}

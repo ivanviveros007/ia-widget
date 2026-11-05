@@ -230,6 +230,12 @@ struct CompactQuota: View {
                             } else {
                                 Text("—").font(.system(size: 18, weight: .medium)).foregroundStyle(.tertiary)
                             }
+                            if let date = provider?.windows.first?.resetDate {
+                                Text(QuotaDates.compact(date)).font(.system(size: 8)).foregroundStyle(.secondary).monospacedDigit()
+                            } else {
+                                Text(provider?.allowanceList.isEmpty == false ? "Ver reinicios" : "Sin fecha")
+                                    .font(.system(size: 8)).foregroundStyle(.tertiary)
+                            }
                         }.frame(maxWidth: .infinity)
                     }
                 }.contentShape(Rectangle())
@@ -315,7 +321,7 @@ struct ProviderCard: View {
                             ResetLabel(window: quota)
                             Spacer()
                             if let date = quota.resetDate {
-                                Text(date.formatted(.dateTime.locale(Locale(identifier: "es_AR")).weekday(.abbreviated).hour().minute()))
+                                Text(QuotaDates.exact(date))
                             }
                         }.font(.system(size: 10)).foregroundStyle(.secondary)
                     }
@@ -330,8 +336,11 @@ struct ProviderCard: View {
                             Spacer()
                             Text("\(quota.remaining) restantes").monospacedDigit().foregroundStyle(quota.remaining == 0 ? Color.red : .mint)
                         }.font(.system(size: 12))
-                        ResetLabel(window: QuotaWindow(label: quota.label, usedPercent: 0, resetsAt: quota.resetsAt))
-                            .font(.system(size: 10)).foregroundStyle(.secondary)
+                        HStack {
+                            ResetLabel(window: QuotaWindow(label: quota.label, usedPercent: 0, resetsAt: quota.resetsAt))
+                            Spacer()
+                            if let date = quota.resetDate { Text(QuotaDates.exact(date)) }
+                        }.font(.system(size: 10)).foregroundStyle(.secondary)
                     }
                 }
                 if !provider.allowanceList.isEmpty { Text(provider.message).font(.caption2).foregroundStyle(.secondary) }

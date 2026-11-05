@@ -225,7 +225,7 @@ def normalize_chat_allowances(raw):
         if isinstance(remaining, bool) or not isinstance(remaining, (int, float)) or not math.isfinite(remaining) or remaining < 0 or int(remaining) != remaining: continue
         reset = window('reset', 0, item.get('resetsAt'))['resetsAt']
         seen.add(label)
-        display = {'deep_research': 'Investigaciones', 'file_upload': 'Cargas de archivos',
+        display = {'deep_research': 'Investigación profunda', 'Investigaciones': 'Investigación profunda', 'file_upload': 'Cargas de archivos',
                    'paste_text_to_file': 'Texto a archivo', 'image_gen': 'Generación de imágenes'}.get(label, label[:80])
         result.append(dict(label=display, remaining=int(remaining), resetsAt=reset))
     result.sort(key=lambda item: 0 if 'gpt' in item['label'].lower() else 1)

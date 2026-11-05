@@ -50,10 +50,16 @@ struct QuotaWidgetView: View {
                                 Text("\(Int(window.remaining)) % disponible").font(.system(size: 12, weight: .semibold)).monospacedDigit().foregroundStyle(window.color)
                                 ProgressView(value: window.remaining, total: 100).tint(window.color)
                                 ResetLabel(window: window).font(.system(size: 9)).foregroundStyle(.secondary)
+                                if family == .systemLarge, let date = window.resetDate {
+                                    Text(QuotaDates.exact(date)).font(.system(size: 9)).foregroundStyle(.secondary)
+                                }
                                 if family == .systemLarge, provider.windows.count > 1 {
                                     let weekly = provider.windows[1]
                                     Text("\(weekly.label): \(Int(weekly.remaining)) % disponible").font(.system(size: 10)).foregroundStyle(.secondary)
                                     ResetLabel(window: weekly).font(.system(size: 9)).foregroundStyle(.secondary)
+                                    if let date = weekly.resetDate {
+                                        Text(QuotaDates.exact(date)).font(.system(size: 9)).foregroundStyle(.secondary)
+                                    }
                                 }
                             } else if !provider.allowanceList.isEmpty {
                                 Text("Conectado").font(.system(size: 12, weight: .semibold))
