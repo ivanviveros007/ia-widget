@@ -53,9 +53,10 @@ La sesión queda en el almacén WebKit de la app en esa Mac, no en el servidor.
 Mientras la app está abierta, vuelve a consultar cada tres minutos. Si Google rechaza el navegador integrado,
 la integración queda pendiente; no se extraen cookies de otros navegadores para evitarlo.
 
-Claude usa credenciales existentes de Claude Code y una caché propia en el Llavero.
-El proceso de sondeo no puede abrir diálogos de autenticación. Si la sesión vence y macOS no permite
-leer la credencial nueva, el panel conserva la medición anterior como desactualizada. Abrir Claude Code
+Claude usa una caché propia en el Llavero. Las consultas automáticas leen exclusivamente esa caché,
+con la interacción de Keychain desactivada globalmente para el proceso, además de `LAContext`.
+La credencial original `Claude Code-credentials` solo se consulta mediante la acción explícita `--connect`.
+Si la sesión vence o la caché no es accesible, el panel conserva la medición anterior como desactualizada. Abrir Claude Code
 y usar la flecha de Claude en el panel permite reconectar con una acción explícita.
 No se rotan tokens de Claude por cuenta propia ni se modifica su entrada original del Llavero.
 

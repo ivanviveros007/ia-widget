@@ -5,6 +5,9 @@ import LocalAuthentication
 let cacheService = "dev.bambam.QuotaGarden.ClaudeSession"
 let interactive = CommandLine.arguments.contains("--connect")
 let importing = CommandLine.arguments.contains("--import")
+// LAContext does not reliably suppress legacy login-keychain ACL dialogs.
+// Disable legacy Keychain UI process-wide unless the user explicitly connects.
+if !interactive { SecKeychainSetUserInteractionAllowed(false) }
 let context = LAContext()
 context.interactionNotAllowed = !interactive
 
@@ -40,7 +43,6 @@ if interactive {
     guard let data = read("Claude Code-credentials"), save(data) else { exit(1) }
     exit(0)
 }
-// Read the current CLI credential when allowed, otherwise the app-owned cache.
-// No original credentials are modified and background access may never prompt.
-guard let data = read("Claude Code-credentials") ?? read(cacheService) else { exit(1) }
+// Poll only our own cache. Access to Claude's item requires an explicit --connect.
+guard let data = read(cacheService) else { exit(1) }
 FileHandle.standardOutput.write(data)

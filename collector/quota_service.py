@@ -134,7 +134,7 @@ def claude_usage():
             return unavailable('claude', 'Falta el lector del Llavero. Ejecutá la instalación.')
         r = subprocess.run([str(helper)], capture_output=True, timeout=8)
         if r.returncode:
-            return unavailable('claude', 'Iniciá sesión en Claude Code y permití acceso al Llavero desde Conectar.')
+            return unavailable('claude', 'Reconectá Claude desde el panel. Las consultas automáticas no solicitan acceso al Llavero de Claude Code.')
         raw = json.loads(r.stdout)
     auth = raw.get('claudeAiOauth') or {}
     token = auth.get('accessToken')
